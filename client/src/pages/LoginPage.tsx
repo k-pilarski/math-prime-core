@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 
 function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm();
   const [serverError, setServerError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const onSubmit = async (data: any) => {
     try {
@@ -23,7 +21,7 @@ function LoginPage() {
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
       alert("Zalogowano pomyślnie!");
-      navigate('/');
+      window.location.href = '/'; 
 
     } catch (error: any) {
       if (error.response && error.response.data && error.response.data.error) {
