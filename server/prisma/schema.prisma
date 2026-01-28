@@ -10,8 +10,53 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String  
-  role      String   @default("USER")
+  password  String
+  role      Role     @default(USER)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt 
+  
+  purchases Purchase[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  price       Float?
+  imageUrl    String?
+  isPublished Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lessons     Lesson[]
+  purchases   Purchase[]
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  videoUrl    String?
+  position    Int
+  isFree      Boolean  @default(false)
+
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Purchase {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
 }
