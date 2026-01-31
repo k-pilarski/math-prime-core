@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import HomePage from './pages/HomePage';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -47,6 +48,7 @@ function App() {
       </nav>
 
       <Routes>
+        <Route path="/" element={<HomePage />} />
         <Route path="/" element={<div style={{ padding: '20px' }}>
             <h1>Strona Główna</h1>
             {isAuthenticated ? <p>Przejdź do <Link to="/dashboard">Panelu Użytkownika</Link>.</p> : <p>Zaloguj się, aby zobaczyć treść.</p>}
