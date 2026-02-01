@@ -6,52 +6,100 @@ import { authenticateToken } from '../middleware/authMiddleware';
 const router = Router();
 
 const createCourseSchema = z.object({
-  title: z.string().min(3, "Tytuł musi mieć co najmniej 3 znaki"),
+  title: z.string().min(3),
   description: z.string().optional(),
-  price: z.number().min(0, "Cena nie może być ujemna").optional(),
+  price: z.number().min(0).optional(),
+});
+
+const createLessonSchema = z.object({
+  title: z.string().min(3),
+  description: z.string().optional(),
+  videoUrl: z.string().optional(),
+  position: z.number().int(),
 });
 
 router.get('/', async (req: Request, res: Response) => {
   try {
     const courses = await prisma.course.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
-
     res.json(courses);
   } catch (error) {
-    console.error("Get courses error:", error);
-    res.status(500).json({ error: 'Nie udało się pobrać kursów.' });
+    res.status(500).json({ error: 'Błąd pobierania kursów' });
+  }
+});
+
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    const course = await prisma.course.findUnique({
+      where: { id },
+      include: {
+        lessons: {
+          orderBy: { position: 'asc' }
+        }
+      }
+    });
+
+    if (!course) {
+      res.status(404).json({ error: "Kurs nie został znaleziony" });
+      return;
+    }
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd serwera' });
   }
 });
 
 router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, price } = createCourseSchema.parse(req.body);
-
     const course = await prisma.course.create({
+      data: { title, description, price, isPublished: false },
+    });
+    res.status(201).json({ message: 'Kurs utworzony', course });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.issues[0].message });
+      return;
+    }
+    res.status(500).json({ error: 'Błąd serwera' });
+  }
+});
+
+router.post('/:id/lessons', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string; 
+    
+    const { title, description, videoUrl, position } = createLessonSchema.parse(req.body);
+
+    const courseExists = await prisma.course.findUnique({ where: { id } });
+    if (!courseExists) {
+      res.status(404).json({ error: "Kurs nie istnieje" });
+      return;
+    }
+
+    const lesson = await prisma.lesson.create({
       data: {
         title,
         description,
-        price,
-        isPublished: false,
-      },
+        videoUrl,
+        position,
+        courseId: id
+      }
     });
 
-    res.status(201).json({
-      message: 'Kurs został utworzony pomyślnie',
-      course,
-    });
+    res.status(201).json({ message: "Lekcja dodana", lesson });
 
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.issues[0].message });
       return;
     }
-    
-    console.error("Create course error:", error);
-    res.status(500).json({ error: 'Wystąpił błąd serwera przy tworzeniu kursu.' });
+    console.log(error);
+    res.status(500).json({ error: 'Błąd serwera przy dodawaniu lekcji' });
   }
 });
 
