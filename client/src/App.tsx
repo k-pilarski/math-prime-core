@@ -3,6 +3,7 @@ import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import HomePage from './pages/HomePage';
+import CoursePage from './pages/CoursePage';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -49,6 +50,7 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/course/:id" element={<CoursePage />} />
         <Route path="/" element={<div style={{ padding: '20px' }}>
             <h1>Strona Główna</h1>
             {isAuthenticated ? <p>Przejdź do <Link to="/dashboard">Panelu Użytkownika</Link>.</p> : <p>Zaloguj się, aby zobaczyć treść.</p>}
