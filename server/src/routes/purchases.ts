@@ -91,4 +91,28 @@ router.get('/check/:courseId', authenticateToken, async (req: Request, res: Resp
   }
 });
 
+router.get('/my-courses', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as AuthRequest).user && typeof (req as AuthRequest).user !== 'string' 
+      ? ((req as AuthRequest).user as any).userId 
+      : null;
+
+    const purchases = await prisma.purchase.findMany({
+      where: { userId },
+      include: {
+        course: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const myCourses = purchases.map(p => p.course);
+    
+    res.json(myCourses);
+
+  } catch (error) {
+    console.error("My courses error:", error);
+    res.status(500).json({ error: "Błąd pobierania twoich kursów" });
+  }
+});
+
 export default router;

@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import HomePage from './pages/HomePage';
 import CoursePage from './pages/CoursePage';
+import MyCoursesPage from './pages/MyCoursesPage';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -25,6 +26,12 @@ function App() {
              <Link to="/dashboard" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>
                Mój Panel
              </Link>
+          )}
+          {isAuthenticated && (
+            <>
+              <Link to="/dashboard" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Dashboard</Link>
+              <Link to="/my-courses" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Moje Kursy</Link> {/* NOWE */}
+            </>
           )}
         </div>
 
@@ -56,7 +63,7 @@ function App() {
             {isAuthenticated ? <p>Przejdź do <Link to="/dashboard">Panelu Użytkownika</Link>.</p> : <p>Zaloguj się, aby zobaczyć treść.</p>}
           </div>} 
         />
-        
+        <Route path="/my-courses" element={isAuthenticated ? <MyCoursesPage /> : <Navigate to="/login" />} />
         <Route 
           path="/dashboard" 
           element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} 
