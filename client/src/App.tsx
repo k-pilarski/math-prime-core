@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage';
 import HomePage from './pages/HomePage';
 import CoursePage from './pages/CoursePage';
 import MyCoursesPage from './pages/MyCoursesPage';
+import AdminPage from './pages/AdminPage';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -30,7 +31,8 @@ function App() {
           {isAuthenticated && (
             <>
               <Link to="/dashboard" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Dashboard</Link>
-              <Link to="/my-courses" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Moje Kursy</Link> {/* NOWE */}
+              <Link to="/my-courses" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Moje Kursy</Link>
+              <Link to="/admin" style={{ marginRight: '15px', color: 'red', fontWeight: 'bold', textDecoration: 'none' }}>ADMIN</Link>
             </>
           )}
         </div>
@@ -64,6 +66,7 @@ function App() {
           </div>} 
         />
         <Route path="/my-courses" element={isAuthenticated ? <MyCoursesPage /> : <Navigate to="/login" />} />
+        <Route path="/admin" element={isAuthenticated ? <AdminPage /> : <Navigate to="/login" />} />
         <Route 
           path="/dashboard" 
           element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} 

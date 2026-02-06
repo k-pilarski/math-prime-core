@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { authenticateToken } from '../middleware/authMiddleware';
+import { isAdmin } from '../middleware/adminMiddleware';
 
 const router = Router();
 
@@ -32,13 +33,10 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-
     const course = await prisma.course.findUnique({
       where: { id },
       include: {
-        lessons: {
-          orderBy: { position: 'asc' }
-        }
+        lessons: { orderBy: { position: 'asc' } }
       }
     });
 
@@ -46,14 +44,13 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: "Kurs nie został znaleziony" });
       return;
     }
-
     res.json(course);
   } catch (error) {
     res.status(500).json({ error: 'Błąd serwera' });
   }
 });
 
-router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, price } = createCourseSchema.parse(req.body);
     const course = await prisma.course.create({
@@ -69,10 +66,9 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
   }
 });
 
-router.post('/:id/lessons', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/lessons', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string; 
-    
     const { title, description, videoUrl, position } = createLessonSchema.parse(req.body);
 
     const courseExists = await prisma.course.findUnique({ where: { id } });
@@ -82,13 +78,7 @@ router.post('/:id/lessons', authenticateToken, async (req: Request, res: Respons
     }
 
     const lesson = await prisma.lesson.create({
-      data: {
-        title,
-        description,
-        videoUrl,
-        position,
-        courseId: id
-      }
+      data: { title, description, videoUrl, position, courseId: id }
     });
 
     res.status(201).json({ message: "Lekcja dodana", lesson });
