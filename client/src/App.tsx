@@ -1,81 +1,128 @@
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
-import RegisterPage from './pages/RegisterPage';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
+import { Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
 import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
 import CoursePage from './pages/CoursePage';
 import MyCoursesPage from './pages/MyCoursesPage';
 import AdminPage from './pages/AdminPage';
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem('token');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const checkAuth = async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setIsAuthenticated(true);
+      
+      try {
+        const res = await axios.get('http://localhost:3000/api/user/profile');
+        setUserRole(res.data.user.role);
+      } catch (err) {
+        console.error("Błąd pobierania profilu", err);
+        handleLogout();
+      }
+    } else {
+      setIsAuthenticated(false);
+      setUserRole(null);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    delete axios.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
+    setUserRole(null);
+    navigate('/login');
   };
 
-  return (
-    <BrowserRouter>
-      <nav style={{ padding: '20px', background: '#f0f0f0', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <Link to="/" style={{ marginRight: '15px', textDecoration: 'none', fontWeight: 'bold', color: 'black' }}>
-            MathPrime
-          </Link>
-          {isAuthenticated && (
-             <Link to="/dashboard" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>
-               Mój Panel
-             </Link>
-          )}
-          {isAuthenticated && (
-            <>
-              <Link to="/dashboard" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Dashboard</Link>
-              <Link to="/my-courses" style={{ marginRight: '15px', textDecoration: 'none', color: '#333' }}>Moje Kursy</Link>
-              <Link to="/admin" style={{ marginRight: '15px', color: 'red', fontWeight: 'bold', textDecoration: 'none' }}>ADMIN</Link>
-            </>
-          )}
-        </div>
+  if (loading) return <div className="flex justify-center items-center h-screen text-xl">Ładowanie aplikacji...</div>;
 
-        <div>
-          {isAuthenticated ? (
-            <>
-              <span style={{ marginRight: '15px', color: '#555' }}>Witaj!</span>
-              <button 
-                onClick={handleLogout} 
-                style={{ padding: '8px 15px', background: 'red', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
-              >
-                Wyloguj
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" style={{ marginRight: '15px', textDecoration: 'none', color: 'green' }}>Logowanie</Link>
-              <Link to="/register" style={{ textDecoration: 'none', color: 'blue' }}>Rejestracja</Link>
-            </>
-          )}
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans flex flex-col">
+      
+      <nav className="bg-white shadow-sm sticky top-0 z-50 h-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+          <div className="flex justify-between items-center h-full">
+            
+            <div className="flex items-center">
+              <Link to="/" className="text-2xl font-bold text-indigo-600 hover:text-indigo-500 transition">
+                MathPrime 🚀
+              </Link>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <Link to="/" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                Katalog
+              </Link>
+              
+              {isAuthenticated ? (
+                <>
+                  <Link to="/dashboard" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                    Dashboard
+                  </Link>
+
+                  <Link to="/my-courses" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                    Moje Kursy
+                  </Link>
+
+                  {userRole === 'ADMIN' && (
+                    <Link to="/admin" className="text-red-500 hover:text-red-700 font-bold px-3 py-2 rounded-md text-sm transition border border-transparent hover:border-red-100">
+                      ADMIN
+                    </Link>
+                  )}
+
+                  <button 
+                    onClick={handleLogout} 
+                    className="ml-4 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-md"
+                  >
+                    Wyloguj
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                    Zaloguj
+                  </Link>
+                  <Link to="/register" className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-md">
+                    Dołącz teraz
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </nav>
 
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/course/:id" element={<CoursePage />} />
-        <Route path="/" element={<div style={{ padding: '20px' }}>
-            <h1>Strona Główna</h1>
-            {isAuthenticated ? <p>Przejdź do <Link to="/dashboard">Panelu Użytkownika</Link>.</p> : <p>Zaloguj się, aby zobaczyć treść.</p>}
-          </div>} 
-        />
-        <Route path="/my-courses" element={isAuthenticated ? <MyCoursesPage /> : <Navigate to="/login" />} />
-        <Route path="/admin" element={isAuthenticated ? <AdminPage /> : <Navigate to="/login" />} />
-        <Route 
-          path="/dashboard" 
-          element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} 
-        />
-        
-        <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/" />} />
-        <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
-      </Routes>
-    </BrowserRouter>
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+          <Route path="/register" element={<RegisterPage setIsAuthenticated={setIsAuthenticated} />} />
+          <Route path="/dashboard" element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} />
+          <Route path="/course/:id" element={<CoursePage />} />
+          <Route path="/my-courses" element={isAuthenticated ? <MyCoursesPage /> : <Navigate to="/login" />} />
+          
+          <Route 
+            path="/admin" 
+            element={isAuthenticated && userRole === 'ADMIN' ? <AdminPage /> : <Navigate to="/" />} 
+          />
+        </Routes>
+      </main>
+
+    </div>
   );
 }
 
