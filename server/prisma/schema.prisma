@@ -41,12 +41,18 @@ model Lesson {
   id          String   @id @default(uuid())
   title       String
   description String?
-  videoUrl    String?
   position    Int
   isFree      Boolean  @default(false)
 
+  type        LessonType @default(VIDEO) 
+  videoUrl    String?    
+  content     String?    
+
   courseId    String
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Purchase {
@@ -59,4 +65,9 @@ model Purchase {
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
 }
