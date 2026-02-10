@@ -15,8 +15,11 @@ const createCourseSchema = z.object({
 const createLessonSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
-  videoUrl: z.string().optional(),
   position: z.number().int(),
+  
+  type: z.enum(['VIDEO', 'TEXT']).default('VIDEO'),
+  videoUrl: z.string().optional(),
+  content: z.string().optional(),
 });
 
 router.get('/', async (req: Request, res: Response) => {
@@ -46,6 +49,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     }
     res.json(course);
   } catch (error) {
+    console.error("KRYTYCZNY BŁĄD SERWERA:", error);
     res.status(500).json({ error: 'Błąd serwera' });
   }
 });
@@ -69,7 +73,8 @@ router.post('/', authenticateToken, isAdmin, async (req: Request, res: Response)
 router.post('/:id/lessons', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string; 
-    const { title, description, videoUrl, position } = createLessonSchema.parse(req.body);
+    
+    const { title, description, videoUrl, position, type, content } = createLessonSchema.parse(req.body);
 
     const courseExists = await prisma.course.findUnique({ where: { id } });
     if (!courseExists) {
@@ -78,7 +83,15 @@ router.post('/:id/lessons', authenticateToken, isAdmin, async (req: Request, res
     }
 
     const lesson = await prisma.lesson.create({
-      data: { title, description, videoUrl, position, courseId: id }
+      data: {
+        title,
+        description,
+        position,
+        courseId: id,
+        type,
+        videoUrl,
+        content
+      }
     });
 
     res.status(201).json({ message: "Lekcja dodana", lesson });
