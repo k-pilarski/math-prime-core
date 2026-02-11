@@ -7,6 +7,7 @@ interface Course {
   title: string;
   description: string;
   price: number;
+  imageUrl?: string;
 }
 
 function HomePage() {
@@ -25,38 +26,61 @@ function HomePage() {
       });
   }, []);
 
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="text-xl text-indigo-600 font-semibold animate-pulse">Ładowanie kursów...</div>
+    </div>
+  );
+
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '2.5rem', color: '#333' }}>Witaj w MathPrime</h1>
-        <p style={{ fontSize: '1.2rem', color: '#666' }}>Wybierz kurs i zacznij naukę już dziś.</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-4">
+          Witaj w <span className="text-indigo-600">MathPrime</span> 🚀
+        </h1>
+        <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+          Najlepsza platforma do nauki matematyki i programowania. Wybierz kurs i zacznij naukę już dziś.
+        </p>
       </div>
 
-      {loading ? (
-        <p>Ładowanie kursów...</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-          
-          {courses.map(course => (
-            <div key={course.id} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-              <h2 style={{ marginTop: '0' }}>{course.title}</h2>
-              <p style={{ color: '#555', height: '60px', overflow: 'hidden' }}>
-                {course.description || "Brak opisu"}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {courses.map(course => (
+          <div key={course.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 border border-gray-100 flex flex-col">
+            
+            <div className="h-48 bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+              <span className="text-white text-5xl opacity-30">📚</span>
+            </div>
+
+            <div className="p-6 flex-1 flex flex-col">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{course.title}</h3>
+              <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1">
+                {course.description || "Brak opisu."}
               </p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'green' }}>
-                  {course.price > 0 ? `${course.price} PLN` : "Darmowy"}
+              
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                <span className={`text-lg font-bold ${course.price === 0 ? 'text-green-600' : 'text-indigo-600'}`}>
+                  {course.price === 0 ? "ZA DARMO 🎁" : `${course.price} PLN`}
                 </span>
-                <Link to={`/course/${course.id}`} style={{ padding: '8px 16px', background: 'blue', color: 'white', textDecoration: 'none', borderRadius: '4px' }}>
-                  Zobacz więcej
+
+                <Link 
+                  to={`/course/${course.id}`} 
+                  className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
+                >
+                  Zobacz więcej →
                 </Link>
               </div>
             </div>
-          ))}
-
-          {courses.length === 0 && <p>Nie ma jeszcze żadnych kursów.</p>}
+          </div>
+        ))}
+      </div>
+      
+      {courses.length === 0 && (
+        <div className="text-center text-gray-500 mt-10">
+          Nie znaleziono żadnych kursów. Zajrzyj później!
         </div>
       )}
+
     </div>
   );
 }

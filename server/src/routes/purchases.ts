@@ -1,33 +1,18 @@
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
 import { prisma } from '../db';
 import { authenticateToken, AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
-const purchaseSchema = z.object({
-  courseId: z.string().uuid("Nieprawidłowe ID kursu"),
-});
-
 router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
+    const { courseId } = req.body;
     const userId = (req as AuthRequest).user && typeof (req as AuthRequest).user !== 'string' 
       ? ((req as AuthRequest).user as any).userId 
       : null;
 
     if (!userId) {
-      res.status(401).json({ error: "Nie rozpoznano użytkownika" });
-      return;
-    }
-
-    const { courseId } = purchaseSchema.parse(req.body);
-
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-    });
-
-    if (!course) {
-      res.status(404).json({ error: "Kurs nie istnieje" });
+      res.status(401).json({ error: "Nieautoryzowany" });
       return;
     }
 
@@ -35,9 +20,9 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
       where: {
         userId_courseId: {
           userId,
-          courseId,
-        },
-      },
+          courseId
+        }
+      }
     });
 
     if (existingPurchase) {
@@ -48,45 +33,58 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
     const purchase = await prisma.purchase.create({
       data: {
         userId,
-        courseId,
-      },
+        courseId
+      }
     });
 
-    res.status(201).json({ 
-      message: "Zakup udany! Masz teraz dostęp do kursu.", 
-      purchase 
-    });
-
+    res.status(201).json({ message: "Zakup udany", purchase });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.issues[0].message });
-      return;
-    }
-    console.error("Purchase error:", error);
-    res.status(500).json({ error: "Błąd serwera przy zakupie" });
+    res.status(500).json({ error: "Błąd zakupu" });
   }
 });
 
 router.get('/check/:courseId', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
+    const courseId = req.params.courseId as string;
+    
     const userId = (req as AuthRequest).user && typeof (req as AuthRequest).user !== 'string' 
       ? ((req as AuthRequest).user as any).userId 
       : null;
-    
-    const { courseId } = req.params;
+
+    if (!userId) {
+      res.json({ hasAccess: false });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role === 'ADMIN') {
+      res.json({ hasAccess: true });
+      return;
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { price: true }
+    });
+
+    if (course && course.price === 0) {
+      res.json({ hasAccess: true });
+      return;
+    }
 
     const purchase = await prisma.purchase.findUnique({
       where: {
         userId_courseId: {
           userId,
-          courseId: courseId as string,
-        },
-      },
+          courseId
+        }
+      }
     });
 
     res.json({ hasAccess: !!purchase });
 
   } catch (error) {
+    console.error("Check access error:", error);
     res.status(500).json({ error: "Błąd sprawdzania dostępu" });
   }
 });
@@ -106,7 +104,6 @@ router.get('/my-courses', authenticateToken, async (req: Request, res: Response)
     });
 
     const myCourses = purchases.map(p => p.course);
-    
     res.json(myCourses);
 
   } catch (error) {
