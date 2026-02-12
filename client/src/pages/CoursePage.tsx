@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 
 interface Lesson {
   id: string;
@@ -190,10 +191,10 @@ function CoursePage() {
                   <div className="p-10 bg-gray-100 rounded text-center">Brak wideo dla tej lekcji</div>
                 )
               ) : (
-                <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 prose max-w-none">
-                    <div className="whitespace-pre-wrap text-lg text-gray-800 leading-relaxed font-serif">
-                        {activeLesson.content || "Brak treści tekstowej."}
-                    </div>
+                <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                  <article className="prose lg:prose-xl max-w-none text-gray-800">
+                      <ReactMarkdown>{activeLesson.content || "Brak treści."}</ReactMarkdown>
+                  </article>
                 </div>
               )}
 
