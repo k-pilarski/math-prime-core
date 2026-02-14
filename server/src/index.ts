@@ -5,6 +5,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import courseRoutes from './routes/courses';
 import purchaseRoutes from './routes/purchases';
+import uploadRoutes from './routes/upload';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/purchases', purchaseRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 The server is running on http://localhost:${port}`);

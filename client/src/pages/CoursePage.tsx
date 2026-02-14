@@ -43,7 +43,7 @@ function CoursePage() {
   const [lessonDesc, setLessonDesc] = useState('');
   const [lessonPos, setLessonPos] = useState(1);
   const [lessonType, setLessonType] = useState<'VIDEO' | 'TEXT'>('VIDEO');
-  const [lessonUrl, setLessonUrl] = useState('');     
+  const [lessonUrl, setLessonUrl] = useState('');      
   const [lessonContent, setLessonContent] = useState(''); 
 
   const getYouTubeEmbedUrl = (url: string) => {
@@ -171,6 +171,33 @@ function CoursePage() {
       }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post('http://localhost:3000/api/upload', formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const markdownImage = `\n![Opis zdjęcia](${res.data.url})\n`;
+      setLessonContent(prev => prev + markdownImage);
+      
+      alert("Zdjęcie wgrane! Kod dodany do treści.");
+
+    } catch (err) {
+      console.error(err);
+      alert("Błąd wgrywania zdjęcia");
+    }
+  };
+
   const handleSaveLesson = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -286,7 +313,15 @@ function CoursePage() {
                      {lessonType === 'VIDEO' ? (
                         <input type="text" value={lessonUrl} onChange={e => setLessonUrl(e.target.value)} className="p-2 border rounded" placeholder="Link YouTube" />
                      ) : (
-                        <textarea value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={10} className="p-2 border rounded font-mono" placeholder="Treść Markdown..." />
+                        <>
+                            <div className="mb-2">
+                                <label className="cursor-pointer bg-orange-200 hover:bg-orange-300 text-orange-900 px-4 py-2 rounded inline-flex items-center gap-2 transition text-sm font-bold shadow-sm">
+                                    <span>📷 Wgraj Zdjęcie / Wykres</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                                </label>
+                            </div>
+                            <textarea value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={10} className="p-2 border rounded font-mono" placeholder="Treść Markdown..." />
+                        </>
                      )}
                      
                      <div className="flex gap-2">
@@ -338,7 +373,6 @@ function CoursePage() {
                 <p className="text-gray-500 italic">Ten kurs nie ma jeszcze dodanych lekcji.</p>
             )
             ) : (
-            // PAYWALL
             <div className="flex flex-col items-center justify-center p-12 bg-yellow-50 border-2 border-yellow-200 border-dashed rounded-xl text-center">
                 <div className="text-5xl mb-4">🔒</div>
                 <h2 className="text-2xl text-yellow-800 font-bold mb-2">Treść zablokowana</h2>
@@ -366,11 +400,22 @@ function CoursePage() {
                             <input type="number" value={lessonPos} onChange={e => setLessonPos(Number(e.target.value))} className="w-full p-2 border rounded" placeholder="Nr" />
                         </div>
                     </div>
+                    
                     {lessonType === 'VIDEO' ? (
                         <input type="text" placeholder="Link YouTube" value={lessonUrl} onChange={e => setLessonUrl(e.target.value)} className="w-full p-2 border rounded" />
                     ) : (
-                        <textarea placeholder="Treść Markdown..." value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={6} className="w-full p-2 border rounded font-mono" />
+                        <>
+                            <div className="mb-2">
+                                <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded inline-flex items-center gap-2 transition text-sm font-bold">
+                                    <span>📷 Wgraj Zdjęcie / Wykres</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                                </label>
+                                <span className="text-xs text-gray-500 ml-2">Obrazek zostanie dopisany do treści.</span>
+                            </div>
+                            <textarea placeholder="Treść Markdown..." value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={6} className="w-full p-2 border rounded font-mono" />
+                        </>
                     )}
+                    
                     <input type="text" placeholder="Opis" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} className="w-full p-2 border rounded" />
                     <button type="submit" className="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 font-bold self-start">+ Dodaj Lekcję</button>
                 </form>
