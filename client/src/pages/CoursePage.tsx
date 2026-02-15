@@ -29,6 +29,8 @@ function CoursePage() {
   const [loading, setLoading] = useState(true);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
+
   const [hasAccess, setHasAccess] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -73,11 +75,24 @@ function CoursePage() {
       .catch(error => console.error("Błąd pobierania kursu:", error));
   };
 
+  const fetchProgress = () => {
+      const token = localStorage.getItem('token');
+      if (token && id) {
+          axios.get(`http://localhost:3000/api/progress/course/${id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+          })
+          .then(res => setCompletedLessonIds(res.data))
+          .catch(err => console.error("Błąd pobierania postępu", err));
+      }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     fetchCourseData();
-
+    
     if (token) {
+      fetchProgress();
+      
       axios.get(`http://localhost:3000/api/user/profile`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         if (res.data.user.role === 'ADMIN') {
@@ -97,6 +112,31 @@ function CoursePage() {
         .finally(() => setLoading(false));
     }
   }, [id]);
+
+  const toggleLessonCompletion = async (lessonId: string) => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const isCompleted = completedLessonIds.includes(lessonId);
+      
+      try {
+          if (isCompleted) {
+              setCompletedLessonIds(prev => prev.filter(id => id !== lessonId));
+              await axios.delete(`http://localhost:3000/api/progress/${lessonId}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+              });
+          } else {
+              setCompletedLessonIds(prev => [...prev, lessonId]);
+              await axios.post(`http://localhost:3000/api/progress/${lessonId}`, {}, {
+                  headers: { Authorization: `Bearer ${token}` }
+              });
+          }
+      } catch (err) {
+          console.error("Błąd aktualizacji postępu", err);
+          fetchProgress();
+      }
+  };
+
 
   const handleBuy = async () => {
     const token = localStorage.getItem('token');
@@ -152,7 +192,6 @@ function CoursePage() {
       setLessonUrl(lesson.videoUrl || '');
       setLessonContent(lesson.content || '');
       setIsEditingLesson(true);
-      
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -186,12 +225,9 @@ function CoursePage() {
           Authorization: `Bearer ${token}`
         }
       });
-
       const markdownImage = `\n![Opis zdjęcia](${res.data.url})\n`;
       setLessonContent(prev => prev + markdownImage);
-      
       alert("Zdjęcie wgrane! Kod dodany do treści.");
-
     } catch (err) {
       console.error(err);
       alert("Błąd wgrywania zdjęcia");
@@ -201,7 +237,6 @@ function CoursePage() {
   const handleSaveLesson = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
-
     let finalVideoUrl = undefined;
     let finalContent = undefined;
 
@@ -260,6 +295,10 @@ function CoursePage() {
       setLessonDesc('');
       if (course?.lessons) setLessonPos(course.lessons.length + 1);
   };
+
+  const totalLessons = course?.lessons?.length || 0;
+  const completedCount = completedLessonIds.length;
+  const progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
 
   if (loading) return <div className="p-10 text-center text-xl">Ładowanie kursu...</div>;
@@ -365,9 +404,26 @@ function CoursePage() {
                         </article>
                     </div>
                 )}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-gray-600">{activeLesson.description}</p>
+
+                <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-gray-600 flex-1">{activeLesson.description}</p>
+                    
+                    <button 
+                        onClick={() => toggleLessonCompletion(activeLesson.id)}
+                        className={`ml-4 flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition shadow-sm
+                            ${completedLessonIds.includes(activeLesson.id) 
+                                ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' 
+                                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100'
+                            }`}
+                    >
+                        {completedLessonIds.includes(activeLesson.id) ? (
+                            <>✅ Ukończono</>
+                        ) : (
+                            <>⭕ Oznacz jako ukończone</>
+                        )}
+                    </button>
                 </div>
+
                 </div>
             ) : (
                 <p className="text-gray-500 italic">Ten kurs nie ma jeszcze dodanych lekcji.</p>
@@ -400,7 +456,6 @@ function CoursePage() {
                             <input type="number" value={lessonPos} onChange={e => setLessonPos(Number(e.target.value))} className="w-full p-2 border rounded" placeholder="Nr" />
                         </div>
                     </div>
-                    
                     {lessonType === 'VIDEO' ? (
                         <input type="text" placeholder="Link YouTube" value={lessonUrl} onChange={e => setLessonUrl(e.target.value)} className="w-full p-2 border rounded" />
                     ) : (
@@ -410,12 +465,10 @@ function CoursePage() {
                                     <span>📷 Wgraj Zdjęcie / Wykres</span>
                                     <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                                 </label>
-                                <span className="text-xs text-gray-500 ml-2">Obrazek zostanie dopisany do treści.</span>
                             </div>
                             <textarea placeholder="Treść Markdown..." value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={6} className="w-full p-2 border rounded font-mono" />
                         </>
                     )}
-                    
                     <input type="text" placeholder="Opis" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} className="w-full p-2 border rounded" />
                     <button type="submit" className="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 font-bold self-start">+ Dodaj Lekcję</button>
                 </form>
@@ -423,20 +476,41 @@ function CoursePage() {
         )}
       </div>
 
-      <div className="w-full md:w-1/4 border-l border-gray-200 bg-gray-50 overflow-y-auto h-full">
-        <div className="p-5 border-b border-gray-200 font-bold bg-white sticky top-0 z-10">Program Kursu</div>
-        <ul className="divide-y divide-gray-100">
-          {course.lessons.map((lesson) => (
-            <li key={lesson.id} onClick={() => { if(hasAccess) { setActiveLesson(lesson); setIsEditingLesson(false); } }} 
-              className={`p-4 cursor-pointer transition flex items-start gap-3 ${!hasAccess ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white'} ${activeLesson?.id === lesson.id ? 'bg-white border-l-4 border-indigo-600 shadow-sm' : ''}`}>
-              <div className="mt-1">{lesson.type === 'VIDEO' ? '🎥' : '📄'}</div>
-              <div className="flex-1">
-                <div className="text-xs font-semibold text-gray-400 uppercase">Lekcja {lesson.position}</div>
-                <div className={`font-medium ${activeLesson?.id === lesson.id ? 'text-indigo-900' : 'text-gray-700'}`}>{lesson.title}</div>
-              </div>
-              {!hasAccess && <span>🔒</span>}
-            </li>
-          ))}
+      <div className="w-full md:w-1/4 border-l border-gray-200 bg-gray-50 overflow-y-auto h-full flex flex-col">
+        
+        <div className="p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
+            <div className="flex justify-between items-center mb-2">
+                <span className="font-bold text-gray-800"> Twój Postęp</span>
+                <span className="text-sm font-bold text-indigo-600">{progressPercentage}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+            </div>
+        </div>
+
+        <ul className="divide-y divide-gray-100 flex-1 overflow-y-auto">
+          {course.lessons.map((lesson) => {
+            const isCompleted = completedLessonIds.includes(lesson.id);
+            return (
+                <li key={lesson.id} onClick={() => { if(hasAccess) { setActiveLesson(lesson); setIsEditingLesson(false); } }} 
+                className={`p-4 cursor-pointer transition flex items-start gap-3 relative
+                    ${!hasAccess ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white'} 
+                    ${activeLesson?.id === lesson.id ? 'bg-white border-l-4 border-indigo-600 shadow-sm' : ''}
+                    ${isCompleted ? 'bg-green-50/50' : ''}
+                `}>
+                <div className="mt-1 text-lg">
+                    {isCompleted ? '✅' : (lesson.type === 'VIDEO' ? '🎥' : '📄')}
+                </div>
+                <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-400 uppercase">Lekcja {lesson.position}</div>
+                    <div className={`font-medium ${activeLesson?.id === lesson.id ? 'text-indigo-900' : (isCompleted ? 'text-gray-500 line-through decoration-green-500' : 'text-gray-700')}`}>
+                        {lesson.title}
+                    </div>
+                </div>
+                {!hasAccess && <span>🔒</span>}
+                </li>
+            );
+          })}
         </ul>
       </div>
 
