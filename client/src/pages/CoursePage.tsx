@@ -3,6 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
+interface Material {
+  id: string;
+  title: string;
+  url: string;
+}
+
 interface Lesson {
   id: string;
   title: string;
@@ -11,6 +17,7 @@ interface Lesson {
   type: 'VIDEO' | 'TEXT';
   videoUrl?: string;
   content?: string;
+  materials?: Material[];
 }
 
 interface Course {
@@ -28,7 +35,6 @@ function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
 
   const [hasAccess, setHasAccess] = useState(false);
@@ -47,6 +53,8 @@ function CoursePage() {
   const [lessonType, setLessonType] = useState<'VIDEO' | 'TEXT'>('VIDEO');
   const [lessonUrl, setLessonUrl] = useState('');      
   const [lessonContent, setLessonContent] = useState(''); 
+
+  const [uploadingMaterial, setUploadingMaterial] = useState(false);
 
   const getYouTubeEmbedUrl = (url: string) => {
     if (!url) return null;
@@ -92,7 +100,6 @@ function CoursePage() {
     
     if (token) {
       fetchProgress();
-      
       axios.get(`http://localhost:3000/api/user/profile`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         if (res.data.user.role === 'ADMIN') {
@@ -116,27 +123,20 @@ function CoursePage() {
   const toggleLessonCompletion = async (lessonId: string) => {
       const token = localStorage.getItem('token');
       if (!token) return;
-
       const isCompleted = completedLessonIds.includes(lessonId);
-      
       try {
           if (isCompleted) {
               setCompletedLessonIds(prev => prev.filter(id => id !== lessonId));
-              await axios.delete(`http://localhost:3000/api/progress/${lessonId}`, {
-                  headers: { Authorization: `Bearer ${token}` }
-              });
+              await axios.delete(`http://localhost:3000/api/progress/${lessonId}`, { headers: { Authorization: `Bearer ${token}` } });
           } else {
               setCompletedLessonIds(prev => [...prev, lessonId]);
-              await axios.post(`http://localhost:3000/api/progress/${lessonId}`, {}, {
-                  headers: { Authorization: `Bearer ${token}` }
-              });
+              await axios.post(`http://localhost:3000/api/progress/${lessonId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
           }
       } catch (err) {
           console.error("Błąd aktualizacji postępu", err);
           fetchProgress();
       }
   };
-
 
   const handleBuy = async () => {
     const token = localStorage.getItem('token');
@@ -159,14 +159,6 @@ function CoursePage() {
     }
   };
 
-  const startEditingCourse = () => {
-    if (!course) return;
-    setEditCourseTitle(course.title);
-    setEditCourseDesc(course.description);
-    setEditCoursePrice(course.price);
-    setIsEditingCourse(true);
-  };
-
   const handleUpdateCourse = async () => {
     try {
         const token = localStorage.getItem('token');
@@ -175,13 +167,10 @@ function CoursePage() {
             description: editCourseDesc,
             price: editCoursePrice
         }, { headers: { Authorization: `Bearer ${token}` } });
-        
         setIsEditingCourse(false);
         fetchCourseData(true);
         alert("Kurs zaktualizowany!");
-    } catch (err) {
-        alert("Błąd aktualizacji kursu");
-    }
+    } catch (err) { alert("Błąd aktualizacji kursu"); }
   };
 
   const startEditingLesson = (lesson: Lesson) => {
@@ -199,40 +188,71 @@ function CoursePage() {
       if(!confirm("Czy na pewno usunąć tę lekcję?")) return;
       try {
           const token = localStorage.getItem('token');
-          await axios.delete(`http://localhost:3000/api/courses/${id}/lessons/${lessonId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
+          await axios.delete(`http://localhost:3000/api/courses/${id}/lessons/${lessonId}`, { headers: { Authorization: `Bearer ${token}` } });
           setActiveLesson(null);
           fetchCourseData();
-          alert("Lekcja usunięta");
-      } catch (err) {
-          alert("Błąd usuwania");
-      }
+      } catch (err) { alert("Błąd usuwania"); }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('file', file);
 
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post('http://localhost:3000/api/upload', formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`
-        }
+        headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
       });
       const markdownImage = `\n![Opis zdjęcia](${res.data.url})\n`;
       setLessonContent(prev => prev + markdownImage);
-      alert("Zdjęcie wgrane! Kod dodany do treści.");
-    } catch (err) {
-      console.error(err);
-      alert("Błąd wgrywania zdjęcia");
-    }
+    } catch (err) { alert("Błąd wgrywania zdjęcia"); }
   };
+
+  const handleAddMaterial = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !activeLesson) return;
+      
+      const title = prompt("Podaj nazwę dla tego pliku:", file.name);
+      if(!title) return;
+
+      setUploadingMaterial(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+          const token = localStorage.getItem('token');
+          const uploadRes = await axios.post('http://localhost:3000/api/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
+          });
+          
+          await axios.post(`http://localhost:3000/api/courses/lessons/${activeLesson.id}/materials`, {
+              title: title,
+              url: uploadRes.data.url
+          }, { headers: { Authorization: `Bearer ${token}` } });
+
+          alert("Materiał dodany!");
+          fetchCourseData(true);
+      } catch (err) {
+          console.error(err);
+          alert("Błąd dodawania materiału");
+      } finally {
+          setUploadingMaterial(false);
+      }
+  };
+
+  const handleDeleteMaterial = async (materialId: string) => {
+      if(!confirm("Usunąć ten materiał?")) return;
+      try {
+          const token = localStorage.getItem('token');
+          await axios.delete(`http://localhost:3000/api/courses/materials/${materialId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          fetchCourseData(true);
+      } catch(err) { alert("Błąd usuwania materiału"); }
+  };
+
 
   const handleSaveLesson = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,10 +262,7 @@ function CoursePage() {
 
     if (lessonType === 'VIDEO') {
         const embedUrl = getYouTubeEmbedUrl(lessonUrl);
-        if (lessonUrl && !embedUrl) {
-            alert("Niepoprawny link do YouTube!");
-            return;
-        }
+        if (lessonUrl && !embedUrl) { alert("Niepoprawny link do YouTube!"); return; }
         finalVideoUrl = embedUrl || lessonUrl; 
     } else {
         finalContent = lessonContent;
@@ -254,45 +271,26 @@ function CoursePage() {
     try {
         if (isEditingLesson && activeLesson) {
             await axios.put(`http://localhost:3000/api/courses/${id}/lessons/${activeLesson.id}`, {
-                title: lessonTitle,
-                description: lessonDesc,
-                position: Number(lessonPos),
-                type: lessonType,
-                videoUrl: finalVideoUrl,
-                content: finalContent
+                title: lessonTitle, description: lessonDesc, position: Number(lessonPos),
+                type: lessonType, videoUrl: finalVideoUrl, content: finalContent
             }, { headers: { Authorization: `Bearer ${token}` } });
-            alert("Lekcja zaktualizowana!");
             setIsEditingLesson(false);
         } else {
             await axios.post(`http://localhost:3000/api/courses/${id}/lessons`, {
-                title: lessonTitle,
-                description: lessonDesc,
-                position: Number(lessonPos),
-                type: lessonType,
-                videoUrl: finalVideoUrl,
-                content: finalContent
+                title: lessonTitle, description: lessonDesc, position: Number(lessonPos),
+                type: lessonType, videoUrl: finalVideoUrl, content: finalContent
             }, { headers: { Authorization: `Bearer ${token}` } });
             alert("Lekcja dodana!");
         }
-
-        setLessonTitle('');
-        setLessonUrl('');
-        setLessonContent('');
-        setLessonDesc('');
+        setLessonTitle(''); setLessonUrl(''); setLessonContent(''); setLessonDesc('');
         if (course?.lessons) setLessonPos(course.lessons.length + 2);
         fetchCourseData(true);
-    } catch (err) {
-        alert("Błąd zapisu lekcji");
-        console.error(err);
-    }
+    } catch (err) { alert("Błąd zapisu lekcji"); }
   };
 
   const cancelEditLesson = () => {
       setIsEditingLesson(false);
-      setLessonTitle('');
-      setLessonUrl('');
-      setLessonContent('');
-      setLessonDesc('');
+      setLessonTitle(''); setLessonUrl(''); setLessonContent(''); setLessonDesc('');
       if (course?.lessons) setLessonPos(course.lessons.length + 1);
   };
 
@@ -314,7 +312,7 @@ function CoursePage() {
                 <div className="flex justify-between items-start">
                     <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
                     {isAdmin && (
-                        <button onClick={startEditingCourse} className="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded hover:bg-gray-200 transition">
+                        <button onClick={() => setIsEditingCourse(true)} className="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded hover:bg-gray-200 transition">
                             ✏️ Edytuj Info
                         </button>
                     )}
@@ -362,8 +360,26 @@ function CoursePage() {
                             <textarea value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={10} className="p-2 border rounded font-mono" placeholder="Treść Markdown..." />
                         </>
                      )}
+
+                     {activeLesson && (
+                         <div className="mt-4 border-t border-orange-200 pt-4">
+                             <h4 className="font-bold text-orange-800 mb-2">📎 Materiały do pobrania (PDF, ZIP)</h4>
+                             <ul className="mb-4 space-y-2">
+                                 {activeLesson.materials?.map(mat => (
+                                     <li key={mat.id} className="flex justify-between items-center bg-white p-2 rounded border border-orange-100">
+                                         <a href={mat.url} target="_blank" className="text-indigo-600 hover:underline text-sm truncate">{mat.title}</a>
+                                         <button type="button" onClick={() => handleDeleteMaterial(mat.id)} className="text-red-500 font-bold px-2">X</button>
+                                     </li>
+                                 ))}
+                             </ul>
+                             <label className="cursor-pointer bg-orange-200 hover:bg-orange-300 text-orange-900 px-4 py-2 rounded inline-flex items-center gap-2 text-sm font-bold">
+                                 <span>{uploadingMaterial ? "Wgrywanie..." : "➕ Dodaj plik"}</span>
+                                 <input type="file" className="hidden" disabled={uploadingMaterial} onChange={handleAddMaterial} />
+                             </label>
+                         </div>
+                     )}
                      
-                     <div className="flex gap-2">
+                     <div className="flex gap-2 mt-4">
                         <button type="submit" className="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700 font-bold">Zapisz Zmiany</button>
                         <button type="button" onClick={cancelEditLesson} className="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500">Anuluj</button>
                      </div>
@@ -378,15 +394,10 @@ function CoursePage() {
                         <span className="text-sm font-bold text-indigo-600 uppercase tracking-wide">Lekcja {activeLesson.position}</span>
                         <h2 className="text-2xl font-bold text-gray-800 mt-1">{activeLesson.title}</h2>
                     </div>
-                    
                     {isAdmin && (
                         <div className="flex gap-2">
-                            <button onClick={() => startEditingLesson(activeLesson)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 text-sm font-bold transition">
-                                ✏️ Edytuj
-                            </button>
-                            <button onClick={() => handleDeleteLesson(activeLesson.id)} className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm font-bold transition">
-                                🗑️ Usuń
-                            </button>
+                            <button onClick={() => startEditingLesson(activeLesson)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 text-sm font-bold transition">✏️ Edytuj</button>
+                            <button onClick={() => handleDeleteLesson(activeLesson.id)} className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm font-bold transition">🗑️ Usuń</button>
                         </div>
                     )}
                 </div>
@@ -405,29 +416,32 @@ function CoursePage() {
                     </div>
                 )}
 
+                {activeLesson.materials && activeLesson.materials.length > 0 && (
+                    <div className="mt-6">
+                        <h3 className="font-bold text-gray-700 mb-3">📎 Materiały do pobrania:</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {activeLesson.materials.map(mat => (
+                                <a key={mat.id} href={mat.url} target="_blank" rel="noreferrer" 
+                                   className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition group">
+                                    <span className="text-2xl">📄</span>
+                                    <span className="text-indigo-700 font-medium group-hover:underline">{mat.title}</span>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                     <p className="text-gray-600 flex-1">{activeLesson.description}</p>
-                    
-                    <button 
-                        onClick={() => toggleLessonCompletion(activeLesson.id)}
+                    <button onClick={() => toggleLessonCompletion(activeLesson.id)}
                         className={`ml-4 flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition shadow-sm
-                            ${completedLessonIds.includes(activeLesson.id) 
-                                ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' 
-                                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100'
-                            }`}
-                    >
-                        {completedLessonIds.includes(activeLesson.id) ? (
-                            <>✅ Ukończono</>
-                        ) : (
-                            <>⭕ Oznacz jako ukończone</>
-                        )}
+                            ${completedLessonIds.includes(activeLesson.id) ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100'}`}>
+                        {completedLessonIds.includes(activeLesson.id) ? <>✅ Ukończono</> : <>⭕ Oznacz jako ukończone</>}
                     </button>
                 </div>
 
                 </div>
-            ) : (
-                <p className="text-gray-500 italic">Ten kurs nie ma jeszcze dodanych lekcji.</p>
-            )
+            ) : ( <p className="text-gray-500 italic">Ten kurs nie ma jeszcze dodanych lekcji.</p> )
             ) : (
             <div className="flex flex-col items-center justify-center p-12 bg-yellow-50 border-2 border-yellow-200 border-dashed rounded-xl text-center">
                 <div className="text-5xl mb-4">🔒</div>
@@ -449,25 +463,13 @@ function CoursePage() {
                         <label className="flex items-center gap-2 cursor-pointer p-3 bg-white rounded border border-indigo-100"><input type="radio" name="ntype" checked={lessonType === 'TEXT'} onChange={() => setLessonType('TEXT')} className="text-indigo-600"/> 📄 Tekst</label>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="md:col-span-3">
-                            <input type="text" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} required className="w-full p-2 border rounded" placeholder="Tytuł lekcji" />
-                        </div>
-                        <div>
-                            <input type="number" value={lessonPos} onChange={e => setLessonPos(Number(e.target.value))} className="w-full p-2 border rounded" placeholder="Nr" />
-                        </div>
+                        <div className="md:col-span-3"> <input type="text" value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} required className="w-full p-2 border rounded" placeholder="Tytuł lekcji" /> </div>
+                        <div> <input type="number" value={lessonPos} onChange={e => setLessonPos(Number(e.target.value))} className="w-full p-2 border rounded" placeholder="Nr" /> </div>
                     </div>
                     {lessonType === 'VIDEO' ? (
                         <input type="text" placeholder="Link YouTube" value={lessonUrl} onChange={e => setLessonUrl(e.target.value)} className="w-full p-2 border rounded" />
                     ) : (
-                        <>
-                            <div className="mb-2">
-                                <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded inline-flex items-center gap-2 transition text-sm font-bold">
-                                    <span>📷 Wgraj Zdjęcie / Wykres</span>
-                                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                                </label>
-                            </div>
-                            <textarea placeholder="Treść Markdown..." value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={6} className="w-full p-2 border rounded font-mono" />
-                        </>
+                        <textarea placeholder="Treść Markdown..." value={lessonContent} onChange={e => setLessonContent(e.target.value)} rows={6} className="w-full p-2 border rounded font-mono" />
                     )}
                     <input type="text" placeholder="Opis" value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} className="w-full p-2 border rounded" />
                     <button type="submit" className="bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 font-bold self-start">+ Dodaj Lekcję</button>
@@ -477,7 +479,6 @@ function CoursePage() {
       </div>
 
       <div className="w-full md:w-1/4 border-l border-gray-200 bg-gray-50 overflow-y-auto h-full flex flex-col">
-        
         <div className="p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
             <div className="flex justify-between items-center mb-2">
                 <span className="font-bold text-gray-800"> Twój Postęp</span>
@@ -487,7 +488,6 @@ function CoursePage() {
                 <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
             </div>
         </div>
-
         <ul className="divide-y divide-gray-100 flex-1 overflow-y-auto">
           {course.lessons.map((lesson) => {
             const isCompleted = completedLessonIds.includes(lesson.id);

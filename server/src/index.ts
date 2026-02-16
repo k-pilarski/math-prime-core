@@ -7,6 +7,7 @@ import courseRoutes from './routes/courses';
 import purchaseRoutes from './routes/purchases';
 import uploadRoutes from './routes/upload';
 import progressRoutes from './routes/progress';
+import path from 'path';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.listen(port, () => {
   console.log(`🚀 The server is running on http://localhost:${port}`);

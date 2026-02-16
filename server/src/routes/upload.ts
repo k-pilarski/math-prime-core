@@ -1,39 +1,44 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
+import path from 'path';
 import { authenticateToken } from '../middleware/authMiddleware';
 import { isAdmin } from '../middleware/adminMiddleware';
 
 const router = Router();
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    
+    cb(null, safeName + '-' + uniqueSuffix + ext);
+  }
 });
 
-const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-router.post('/', authenticateToken, isAdmin, upload.single('image'), async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, isAdmin, upload.single('file'), (req: Request, res: Response): void => {
   try {
     if (!req.file) {
       res.status(400).json({ error: "Nie przesłano pliku" });
       return;
     }
 
-    const b64 = Buffer.from(req.file.buffer).toString('base64');
-    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+    const fileUrl = `http://localhost:3000/uploads/${req.file.filename}`;
 
-    const result = await cloudinary.uploader.upload(dataURI, {
-      folder: "mathprime_courses", 
+    res.json({ 
+      url: fileUrl, 
+      name: req.file.originalname 
     });
-
-    res.json({ url: result.secure_url });
 
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({ error: "Błąd przesyłania zdjęcia" });
+    res.status(500).json({ error: "Błąd zapisu pliku" });
   }
 });
 

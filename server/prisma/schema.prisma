@@ -56,6 +56,7 @@ model Lesson {
   updatedAt   DateTime @updatedAt
   
   userProgress UserProgress[]
+  materials Material[]
 }
 
 model Purchase {
@@ -81,6 +82,15 @@ model UserProgress {
   createdAt DateTime @default(now())
 
   @@unique([userId, lessonId]) // Użytkownik może ukończyć lekcję tylko raz
+}
+
+model Material {
+  id        String   @id @default(uuid())
+  title     String   
+  url       String   
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 enum LessonType {

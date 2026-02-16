@@ -38,7 +38,10 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     const course = await prisma.course.findUnique({
       where: { id },
       include: {
-        lessons: { orderBy: { position: 'asc' } }
+        lessons: { 
+            orderBy: { position: 'asc' },
+            include: { materials: true } 
+        }
       }
     });
 
@@ -74,12 +77,6 @@ router.post('/:id/lessons', authenticateToken, isAdmin, async (req: Request, res
     const id = req.params.id as string;
     const { title, description, videoUrl, position, type, content } = createLessonSchema.parse(req.body);
 
-    const courseExists = await prisma.course.findUnique({ where: { id } });
-    if (!courseExists) {
-      res.status(404).json({ error: "Kurs nie istnieje" });
-      return;
-    }
-
     const lesson = await prisma.lesson.create({
       data: {
         title, description, position, courseId: id,
@@ -101,16 +98,11 @@ router.put('/:id', authenticateToken, isAdmin, async (req: Request, res: Respons
 
     const updatedCourse = await prisma.course.update({
       where: { id },
-      data: { 
-        title, 
-        description, 
-        price: Number(price) 
-      }
+      data: { title, description, price: Number(price) }
     });
 
     res.json({ message: "Kurs zaktualizowany", course: updatedCourse });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Błąd edycji kursu" });
   }
 });
@@ -122,19 +114,11 @@ router.put('/:courseId/lessons/:lessonId', authenticateToken, isAdmin, async (re
 
     const updatedLesson = await prisma.lesson.update({
       where: { id: lessonId },
-      data: {
-        title,
-        description,
-        videoUrl,
-        content,
-        type,
-        position: Number(position)
-      }
+      data: { title, description, videoUrl, content, type, position: Number(position) }
     });
 
     res.json({ message: "Lekcja zaktualizowana", lesson: updatedLesson });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Błąd edycji lekcji" });
   }
 });
@@ -142,11 +126,36 @@ router.put('/:courseId/lessons/:lessonId', authenticateToken, isAdmin, async (re
 router.delete('/:courseId/lessons/:lessonId', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const lessonId = req.params.lessonId as string;
-    
     await prisma.lesson.delete({ where: { id: lessonId } });
     res.json({ message: "Lekcja usunięta" });
   } catch (error) {
     res.status(500).json({ error: "Błąd usuwania lekcji" });
+  }
+});
+
+router.post('/lessons/:lessonId/materials', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const lessonId = req.params.lessonId as string;
+    const { title, url } = req.body;
+
+    const material = await prisma.material.create({
+      data: { title, url, lessonId }
+    });
+
+    res.status(201).json(material);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Błąd dodawania materiału" });
+  }
+});
+
+router.delete('/materials/:materialId', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const materialId = req.params.materialId as string;
+    await prisma.material.delete({ where: { id: materialId } });
+    res.json({ message: "Materiał usunięty" });
+  } catch (error) {
+    res.status(500).json({ error: "Błąd usuwania materiału" });
   }
 });
 
