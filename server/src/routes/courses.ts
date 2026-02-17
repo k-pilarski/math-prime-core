@@ -16,7 +16,7 @@ const createLessonSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
   position: z.number().int(),
-  type: z.enum(['VIDEO', 'TEXT']).default('VIDEO'),
+  type: z.enum(['VIDEO', 'TEXT', 'QUIZ']).default('VIDEO'),
   videoUrl: z.string().optional(),
   content: z.string().optional(),
 });
@@ -40,7 +40,12 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       include: {
         lessons: { 
             orderBy: { position: 'asc' },
-            include: { materials: true } 
+            include: { 
+                materials: true,
+                questions: {
+                    include: { options: true }
+                }
+            } 
         }
       }
     });
@@ -137,14 +142,9 @@ router.post('/lessons/:lessonId/materials', authenticateToken, isAdmin, async (r
   try {
     const lessonId = req.params.lessonId as string;
     const { title, url } = req.body;
-
-    const material = await prisma.material.create({
-      data: { title, url, lessonId }
-    });
-
+    const material = await prisma.material.create({ data: { title, url, lessonId } });
     res.status(201).json(material);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Błąd dodawania materiału" });
   }
 });
@@ -157,6 +157,38 @@ router.delete('/materials/:materialId', authenticateToken, isAdmin, async (req: 
   } catch (error) {
     res.status(500).json({ error: "Błąd usuwania materiału" });
   }
+});
+
+router.post('/lessons/:lessonId/quiz', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const lessonId = req.params.lessonId as string;
+        const { text, options } = req.body;
+
+        const question = await prisma.quizQuestion.create({
+            data: {
+                text,
+                lessonId,
+                options: {
+                    create: options
+                }
+            },
+            include: { options: true }
+        });
+        res.json(question);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Błąd dodawania pytania" });
+    }
+});
+
+router.delete('/quiz/question/:questionId', authenticateToken, isAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const questionId = req.params.questionId as string;
+        await prisma.quizQuestion.delete({ where: { id: questionId }});
+        res.json({ message: "Pytanie usunięte" });
+    } catch (error) {
+        res.status(500).json({ error: "Błąd usuwania pytania" });
+    }
 });
 
 export default router;
