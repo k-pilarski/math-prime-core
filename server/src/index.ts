@@ -8,6 +8,7 @@ import purchaseRoutes from './routes/purchases';
 import uploadRoutes from './routes/upload';
 import progressRoutes from './routes/progress';
 import path from 'path';
+import commentsRoutes from './routes/comments';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api/comments', commentsRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 The server is running on http://localhost:${port}`);

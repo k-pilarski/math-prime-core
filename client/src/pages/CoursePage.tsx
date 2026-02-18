@@ -7,6 +7,8 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
+import CommentSection from '../components/CommentSection';
+
 const RenderMath = ({ children }: { children: string }) => (
   <span className="prose prose-sm max-w-none inline-block text-gray-800">
     <ReactMarkdown
@@ -352,6 +354,9 @@ function CoursePage() {
                     {activeLesson.type !== 'QUIZ' && ( <button onClick={() => toggleLessonCompletion(activeLesson.id)} className={`ml-4 flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition shadow-sm ${completedLessonIds.includes(activeLesson.id) ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-white border border-gray-300 text-gray-600'}`}>{completedLessonIds.includes(activeLesson.id) ? <>✅ Ukończono</> : <>⭕ Oznacz jako ukończone</>}</button> )}
                     {activeLesson.type === 'QUIZ' && completedLessonIds.includes(activeLesson.id) && ( <span className="ml-4 px-6 py-3 rounded-lg font-bold bg-green-100 text-green-700 border border-green-200">✅ Zaliczono</span> )}
                 </div>
+                
+                <CommentSection lessonId={activeLesson.id} />
+
                 </div>
             ) : ( <p className="text-gray-500 italic">Brak lekcji.</p> )
             ) : (
