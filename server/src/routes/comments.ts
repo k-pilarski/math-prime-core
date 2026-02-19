@@ -7,12 +7,11 @@ const router = Router();
 router.get('/lesson/:lessonId', async (req: Request, res: Response) => {
   try {
     const lessonId = req.params.lessonId as string;
-
     const comments = await prisma.comment.findMany({
       where: { lessonId },
       include: {
         user: {
-          select: { id: true, email: true, role: true }
+          select: { id: true, email: true, role: true, isBlocked: true }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -26,7 +25,6 @@ router.get('/lesson/:lessonId', async (req: Request, res: Response) => {
 router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const { text, lessonId } = req.body;
-    
     const userId = (req as AuthRequest).user && typeof (req as AuthRequest).user !== 'string' 
       ? ((req as AuthRequest).user as any).userId 
       : null;
@@ -36,10 +34,16 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
        return;
     }
 
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (currentUser?.isBlocked) {
+        res.status(403).json({ error: "Twoje konto zostało zablokowane. Nie możesz dodawać komentarzy." });
+        return;
+    }
+
     const comment = await prisma.comment.create({
       data: { text, lessonId, userId },
       include: {
-        user: { select: { id: true, email: true, role: true } }
+        user: { select: { id: true, email: true, role: true, isBlocked: true } }
       }
     });
 
@@ -53,7 +57,6 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
 router.delete('/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-    
     const userId = (req as AuthRequest).user && typeof (req as AuthRequest).user !== 'string' 
       ? ((req as AuthRequest).user as any).userId 
       : null;
@@ -76,10 +79,39 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response): Pr
 
     await prisma.comment.delete({ where: { id } });
     res.json({ message: "Usunięto komentarz" });
-
   } catch (error) {
     res.status(500).json({ error: "Błąd usuwania" });
   }
+});
+
+router.put('/user/:targetUserId/block', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+    try {
+      const targetUserId = req.params.targetUserId as string;
+      const adminId = (req as AuthRequest).user && typeof (req as AuthRequest).user !== 'string' 
+        ? ((req as AuthRequest).user as any).userId 
+        : null;
+  
+      const adminUser = await prisma.user.findUnique({ where: { id: adminId } });
+      if (adminUser?.role !== 'ADMIN') {
+          res.status(403).json({ error: "Tylko administrator może blokować użytkowników" });
+          return;
+      }
+  
+      const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+      if (!targetUser) {
+          res.status(404).json({ error: "Nie znaleziono użytkownika" });
+          return;
+      }
+  
+      await prisma.user.update({
+          where: { id: targetUserId },
+          data: { isBlocked: !targetUser.isBlocked }
+      });
+  
+      res.json({ message: "Status blokady zmieniony!" });
+    } catch (error) {
+      res.status(500).json({ error: "Błąd zmiany blokady" });
+    }
 });
 
 export default router;

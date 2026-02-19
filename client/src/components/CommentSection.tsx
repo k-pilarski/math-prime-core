@@ -5,6 +5,7 @@ interface User {
   id: string;
   email: string;
   role: string;
+  isBlocked?: boolean;
 }
 
 interface Comment {
@@ -54,7 +55,9 @@ const CommentSection = ({ lessonId }: Props) => {
           );
           setNewComment('');
           fetchComments();
-      } catch (err) { alert("Błąd dodawania komentarza"); }
+      } catch (err: any) {
+          alert(err.response?.data?.error || "Błąd dodawania komentarza"); 
+      }
   };
 
   const handleDelete = async (commentId: string) => {
@@ -66,6 +69,19 @@ const CommentSection = ({ lessonId }: Props) => {
           });
           fetchComments();
       } catch (err) { alert("Nie możesz usunąć tego komentarza."); }
+  };
+
+  const handleToggleBlock = async (userId: string, isCurrentlyBlocked: boolean) => {
+      const action = isCurrentlyBlocked ? "Odblokować" : "Zablokować";
+      if (!confirm(`Czy na pewno chcesz ${action} tego użytkownika?`)) return;
+      
+      const token = localStorage.getItem('token');
+      try {
+          await axios.put(`http://localhost:3000/api/comments/user/${userId}/block`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          fetchComments();
+      } catch (err) { alert("Błąd przy zmianie statusu blokady"); }
   };
 
   const getInitials = (user?: User) => {
@@ -120,6 +136,7 @@ const CommentSection = ({ lessonId }: Props) => {
                           <span className="font-bold text-gray-900">
                               {getDisplayName(comment.user)}
                               {comment.user?.role === 'ADMIN' && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full border border-yellow-200">MOD</span>}
+                              {comment.user?.isBlocked && <span className="ml-2 text-xs text-red-600 font-bold">(Zablokowany)</span>}
                           </span>
                           <span className="text-xs text-gray-400">• {formatDate(comment.createdAt)}</span>
                       </div>
@@ -127,12 +144,21 @@ const CommentSection = ({ lessonId }: Props) => {
                           {comment.text}
                       </p>
                       
-                      {(currentUser?.role === 'ADMIN' || (comment.user && currentUser?.id === comment.user.id)) && (
-                          <button onClick={() => handleDelete(comment.id)} 
-                              className="block mt-1 text-xs text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition">
-                              Usuń wpis
-                          </button>
-                      )}
+                      <div className="flex gap-4 mt-1">
+                          {(currentUser?.role === 'ADMIN' || (comment.user && currentUser?.id === comment.user.id)) && (
+                              <button onClick={() => handleDelete(comment.id)} 
+                                  className="text-xs text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition">
+                                  Usuń wpis
+                              </button>
+                          )}
+                          
+                          {currentUser?.role === 'ADMIN' && comment.user && comment.user.id !== currentUser.id && (
+                              <button onClick={() => handleToggleBlock(comment.user.id, !!comment.user.isBlocked)} 
+                                  className={`text-xs opacity-0 group-hover:opacity-100 transition font-bold ${comment.user.isBlocked ? 'text-green-500 hover:text-green-700' : 'text-orange-500 hover:text-orange-700'}`}>
+                                  {comment.user.isBlocked ? "✅ Odblokuj" : "🚫 Zablokuj"}
+                              </button>
+                          )}
+                      </div>
                   </div>
               </div>
           ))}
