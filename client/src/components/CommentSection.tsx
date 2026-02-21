@@ -6,6 +6,7 @@ interface User {
   email: string;
   role: string;
   isBlocked?: boolean;
+  nickname?: string | null;
 }
 
 interface Comment {
@@ -98,14 +99,17 @@ const CommentSection = ({ lessonId }: Props) => {
   };
 
   const getInitials = (user?: User) => {
-      if (!user?.email) return '??';
+      if (!user) return '??';
       if (user.role === 'ADMIN') return 'AD';
+      if (user.nickname) return user.nickname.substring(0, 2).toUpperCase();
+      if (user.email) return user.email.substring(0, 2).toUpperCase();
       return 'AN';
   };
 
   const getDisplayName = (commentUser?: User) => {
       if (!commentUser) return 'Użytkownik usunięty';
       if (commentUser.role === 'ADMIN') return 'Administrator';
+      if (commentUser.nickname) return commentUser.nickname;
       if (currentUser && currentUser.id === commentUser.id) return 'Ty';
       return 'Anonim';
   };

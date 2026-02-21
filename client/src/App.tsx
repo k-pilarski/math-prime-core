@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import CoursePage from './pages/CoursePage';
 import MyCoursesPage from './pages/MyCoursesPage';
 import AdminPage from './pages/AdminPage';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -74,6 +75,10 @@ function App() {
                     Dashboard
                   </Link>
 
+                  <Link to="/profile" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                    Moje Konto
+                  </Link>
+
                   <Link to="/my-courses" className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition">
                     Moje Kursy
                   </Link>
@@ -114,6 +119,7 @@ function App() {
           <Route path="/dashboard" element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />} />
           <Route path="/course/:id" element={<CoursePage />} />
           <Route path="/my-courses" element={isAuthenticated ? <MyCoursesPage /> : <Navigate to="/login" />} />
+          <Route path="/profile" element={<ProfilePage />} />
           
           <Route 
             path="/admin" 
