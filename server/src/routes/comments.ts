@@ -14,10 +14,10 @@ router.get('/lesson/:lessonId', async (req: Request, res: Response) => {
       },
       include: {
         user: {
-          select: { id: true, email: true, role: true, isBlocked: true }
+          select: { id: true, email: true, role: true, isBlocked: true, nickname: true }
         },
         replies: {
-          include: { user: { select: { id: true, email: true, role: true, isBlocked: true } } },
+          include: { user: { select: { id: true, email: true, role: true, isBlocked: true, nickname: true } } },
           orderBy: { createdAt: 'asc' }
         }
       },
@@ -55,7 +55,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
           parentId: parentId || null
       },
       include: {
-        user: { select: { id: true, email: true, role: true, isBlocked: true } }
+        user: { select: { id: true, email: true, role: true, isBlocked: true, nickname: true } }
       }
     });
 
