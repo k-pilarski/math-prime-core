@@ -9,6 +9,7 @@ import uploadRoutes from './routes/upload';
 import progressRoutes from './routes/progress';
 import path from 'path';
 import commentsRoutes from './routes/comments';
+import certificatesRoutes from './routes/certificates';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/comments', commentsRoutes);
+app.use('/api/certificates', certificatesRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 The server is running on http://localhost:${port}`);

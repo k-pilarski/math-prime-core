@@ -200,6 +200,30 @@ function CoursePage() {
       } catch (err) { console.error("Błąd postępu", err); fetchProgress(); }
   };
 
+  const handleDownloadCertificate = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await axios.get(`http://localhost:3000/api/certificates/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob', 
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Certyfikat_${course?.title.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      if (link.parentNode) link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Błąd podczas pobierania certyfikatu. Upewnij się, że masz 100% postępu.");
+    }
+  };
+
   const handleBuy = async () => {
     const token = localStorage.getItem('token');
     if (!token) { alert("Musisz być zalogowany!"); navigate('/login'); return; }
@@ -383,11 +407,69 @@ function CoursePage() {
         )}
       </div>
       <div className="w-full md:w-1/4 border-l border-gray-200 bg-gray-50 overflow-y-auto h-full flex flex-col">
-        <div className="p-5 border-b border-gray-200 bg-white sticky top-0 z-10"><div className="flex justify-between items-center mb-2"><span className="font-bold text-gray-800"> Postęp</span><span className="text-sm font-bold text-indigo-600">{progressPercentage}%</span></div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div></div></div>
+        <div className="p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-bold text-gray-800">Postęp</span>
+            <span className="text-sm font-bold text-indigo-600">{progressPercentage}%</span>
+          </div>
+          
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div 
+              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" 
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+
+          {progressPercentage === 100 && (
+            <button 
+              onClick={handleDownloadCertificate}
+              className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white font-bold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all text-sm flex items-center justify-center gap-2"
+            >
+              🎓 Pobierz Certyfikat
+            </button>
+          )}
+        </div>
+
         <ul className="divide-y divide-gray-100 flex-1 overflow-y-auto">
           {course.lessons.map((lesson) => {
             const isCompleted = completedLessonIds.includes(lesson.id);
-            return ( <li key={lesson.id} onClick={() => { if(hasAccess) { setActiveLesson(lesson); setIsEditingLesson(false); setQuizResult(null); setUserAnswers({}); } }} className={`p-4 cursor-pointer transition flex items-start gap-3 relative ${!hasAccess ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white'} ${activeLesson?.id === lesson.id ? 'bg-white border-l-4 border-indigo-600 shadow-sm' : ''} ${isCompleted ? 'bg-green-50/50' : ''}`}><div className="mt-1 text-lg">{isCompleted ? '✅' : (lesson.type === 'VIDEO' ? '🎥' : (lesson.type === 'QUIZ' ? '❓' : '📄'))}</div><div className="flex-1"><div className="text-xs font-semibold text-gray-400 uppercase">Lekcja {lesson.position}</div><div className={`font-medium ${activeLesson?.id === lesson.id ? 'text-indigo-900' : (isCompleted ? 'text-gray-500 line-through decoration-green-500' : 'text-gray-700')}`}>{lesson.title}</div></div>{!hasAccess && <span>🔒</span>}</li> );
+            const isActive = activeLesson?.id === lesson.id;
+            
+            return (
+              <li 
+                key={lesson.id} 
+                onClick={() => { 
+                  if (hasAccess) { 
+                    setActiveLesson(lesson); 
+                    setIsEditingLesson(false); 
+                    setQuizResult(null); 
+                    setUserAnswers({}); 
+                  } 
+                }} 
+                className={`p-4 cursor-pointer transition flex items-start gap-3 relative 
+                  ${!hasAccess ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white'} 
+                  ${isActive ? 'bg-white border-l-4 border-indigo-600 shadow-sm' : ''} 
+                  ${isCompleted && !isActive ? 'bg-green-50/50' : ''}`
+                }
+              >
+                <div className="mt-1 text-lg">
+                  {isCompleted ? '✅' : (lesson.type === 'VIDEO' ? '🎥' : (lesson.type === 'QUIZ' ? '❓' : '📄'))}
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-gray-400 uppercase">
+                    Lekcja {lesson.position}
+                  </div>
+                  <div className={`font-medium 
+                    ${isActive ? 'text-indigo-900' : (isCompleted ? 'text-gray-500 line-through decoration-green-500' : 'text-gray-700')}`
+                  }>
+                    {lesson.title}
+                  </div>
+                </div>
+
+                {!hasAccess && <span>🔒</span>}
+              </li>
+            );
           })}
         </ul>
       </div>
