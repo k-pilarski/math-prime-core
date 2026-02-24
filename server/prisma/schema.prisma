@@ -19,6 +19,7 @@ model User {
   purchases Purchase[]
   userProgress UserProgress[]
   comments Comment[]
+  notes     Note[]
 }
 
 enum Role {
@@ -62,6 +63,7 @@ model Lesson {
   materials Material[]
   questions   QuizQuestion[]
   comments Comment[]
+  notes     Note[]
 }
 
 model Purchase {
@@ -86,7 +88,7 @@ model UserProgress {
 
   createdAt DateTime @default(now())
 
-  @@unique([userId, lessonId]) // Użytkownik może ukończyć lekcję tylko raz
+  @@unique([userId, lessonId])
 }
 
 model Material {
@@ -128,6 +130,22 @@ model Comment {
   parentId  String?
   parent    Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("CommentToComment")
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lessonId]) 
 }
 
 enum LessonType {

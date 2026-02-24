@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 import CommentSection from '../components/CommentSection';
+import PrivateNote from '../components/PrivateNote';
 
 const RenderMath = ({ children }: { children: string }) => (
   <span className="prose prose-sm max-w-none inline-block text-gray-800">
@@ -379,6 +380,7 @@ function CoursePage() {
                     {activeLesson.type === 'QUIZ' && completedLessonIds.includes(activeLesson.id) && ( <span className="ml-4 px-6 py-3 rounded-lg font-bold bg-green-100 text-green-700 border border-green-200">✅ Zaliczono</span> )}
                 </div>
                 
+                <PrivateNote lessonId={activeLesson.id} />
                 <CommentSection lessonId={activeLesson.id} />
 
                 </div>
