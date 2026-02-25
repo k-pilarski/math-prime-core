@@ -16,6 +16,9 @@ model User {
   isBlocked Boolean  @default(false)
   nickname  String?  @unique
   
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
   purchases Purchase[]
   userProgress UserProgress[]
   comments Comment[]

@@ -11,6 +11,7 @@ import path from 'path';
 import commentsRoutes from './routes/comments';
 import certificatesRoutes from './routes/certificates';
 import notesRoutes from './routes/notes';
+import passwordResetRoutes from './routes/passwordReset';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/comments', commentsRoutes);
 app.use('/api/certificates', certificatesRoutes);
 app.use('/api/notes', notesRoutes);
+app.use('/api/password-reset', passwordResetRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 The server is running on http://localhost:${port}`);
