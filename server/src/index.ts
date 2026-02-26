@@ -12,6 +12,7 @@ import commentsRoutes from './routes/comments';
 import certificatesRoutes from './routes/certificates';
 import notesRoutes from './routes/notes';
 import passwordResetRoutes from './routes/passwordReset';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use('/api/comments', commentsRoutes);
 app.use('/api/certificates', certificatesRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/password-reset', passwordResetRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 The server is running on http://localhost:${port}`);
