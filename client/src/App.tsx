@@ -8,10 +8,10 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import CoursePage from './pages/CoursePage';
 import MyCoursesPage from './pages/MyCoursesPage';
-import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -124,11 +124,7 @@ function App() {
           <Route path="/course/:id" element={<CoursePage />} />
           <Route path="/my-courses" element={isAuthenticated ? <MyCoursesPage /> : <Navigate to="/login" />} />
           <Route path="/profile" element={<ProfilePage />} />
-          
-          <Route 
-            path="/admin" 
-            element={isAuthenticated && userRole === 'ADMIN' ? <AdminPage /> : <Navigate to="/" />} 
-          />
+          <Route path="/admin" element={<AdminDashboardPage />} />
         </Routes>
       </main>
 
