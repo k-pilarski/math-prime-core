@@ -23,9 +23,18 @@ const createLessonSchema = z.object({
 
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const { sortBy = 'createdAt', order = 'desc' } = req.query;
+
+    const validSortFields = ['title', 'price', 'createdAt'];
+    const validOrders = ['asc', 'desc'];
+
+    const sortField = validSortFields.includes(sortBy as string) ? (sortBy as string) : 'createdAt';
+    const sortOrder = validOrders.includes(order as string) ? (order as string) : 'desc';
+
     const courses = await prisma.course.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { [sortField]: sortOrder },
     });
+    
     res.json(courses);
   } catch (error) {
     res.status(500).json({ error: 'Błąd pobierania kursów' });
