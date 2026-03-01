@@ -23,7 +23,7 @@ const createLessonSchema = z.object({
 
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { sortBy = 'createdAt', order = 'desc' } = req.query;
+    const { sortBy = 'createdAt', order = 'desc', search = '' } = req.query;
 
     const validSortFields = ['title', 'price', 'createdAt'];
     const validOrders = ['asc', 'desc'];
@@ -31,7 +31,16 @@ router.get('/', async (req: Request, res: Response) => {
     const sortField = validSortFields.includes(sortBy as string) ? (sortBy as string) : 'createdAt';
     const sortOrder = validOrders.includes(order as string) ? (order as string) : 'desc';
 
+    const searchQuery = search as string;
+    const whereCondition = searchQuery ? {
+      OR: [
+        { title: { contains: searchQuery, mode: 'insensitive' as const } },
+        { description: { contains: searchQuery, mode: 'insensitive' as const } }
+      ]
+    } : {};
+
     const courses = await prisma.course.findMany({
+      where: whereCondition,
       orderBy: { [sortField]: sortOrder },
     });
     
