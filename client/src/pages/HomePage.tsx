@@ -13,9 +13,16 @@ interface Course {
 function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [order, setOrder] = useState('desc');
 
   useEffect(() => {
-    axios.get('http://localhost:3000/api/courses')
+    setLoading(true);
+    
+    const apiUrl = `http://localhost:3000/api/courses?sortBy=${sortBy}&order=${order}`;
+
+    axios.get(apiUrl)
       .then(response => {
         setCourses(response.data);
         setLoading(false);
@@ -24,9 +31,29 @@ function HomePage() {
         console.error("Błąd pobierania kursów:", error);
         setLoading(false);
       });
-  }, []);
+  }, [sortBy, order]);
 
-  if (loading) return (
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    switch (value) {
+      case 'newest':
+        setSortBy('createdAt'); setOrder('desc'); break;
+      case 'oldest':
+        setSortBy('createdAt'); setOrder('asc'); break;
+      case 'priceAsc':
+        setSortBy('price'); setOrder('asc'); break;
+      case 'priceDesc':
+        setSortBy('price'); setOrder('desc'); break;
+      case 'titleAsc':
+        setSortBy('title'); setOrder('asc'); break;
+      case 'titleDesc':
+        setSortBy('title'); setOrder('desc'); break;
+      default:
+        setSortBy('createdAt'); setOrder('desc');
+    }
+  };
+
+  if (loading && courses.length === 0) return (
     <div className="flex justify-center items-center h-64">
       <div className="text-xl text-indigo-600 font-semibold animate-pulse">Ładowanie kursów...</div>
     </div>
@@ -44,7 +71,32 @@ function HomePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="text-gray-600 font-medium">
+          Dostępne kursy: <span className="text-indigo-600 font-bold">{courses.length}</span>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <label htmlFor="sortSelect" className="text-sm font-medium text-gray-700">
+            Sortuj według:
+          </label>
+          <select 
+            id="sortSelect"
+            onChange={handleSortChange}
+            defaultValue="newest"
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 cursor-pointer shadow-sm outline-none"
+          >
+            <option value="newest">🗓️ Najnowsze</option>
+            <option value="oldest">🗓️ Najstarsze</option>
+            <option value="priceAsc">💰 Cena: od najniższej</option>
+            <option value="priceDesc">💰 Cena: od najwyższej</option>
+            <option value="titleAsc">🔤 Nazwa: A-Z</option>
+            <option value="titleDesc">🔤 Nazwa: Z-A</option>
+          </select>
+        </div>
+      </div>
+
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         {courses.map(course => (
           <div key={course.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 border border-gray-100 flex flex-col">
             
@@ -75,7 +127,7 @@ function HomePage() {
         ))}
       </div>
       
-      {courses.length === 0 && (
+      {!loading && courses.length === 0 && (
         <div className="text-center text-gray-500 mt-10">
           Nie znaleziono żadnych kursów. Zajrzyj później!
         </div>
