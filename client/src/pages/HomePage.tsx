@@ -17,10 +17,21 @@ function HomePage() {
   const [sortBy, setSortBy] = useState('createdAt');
   const [order, setOrder] = useState('desc');
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     setLoading(true);
     
-    const apiUrl = `http://localhost:3000/api/courses?sortBy=${sortBy}&order=${order}`;
+    const apiUrl = `http://localhost:3000/api/courses?sortBy=${sortBy}&order=${order}&search=${debouncedSearch}`;
 
     axios.get(apiUrl)
       .then(response => {
@@ -31,29 +42,22 @@ function HomePage() {
         console.error("Błąd pobierania kursów:", error);
         setLoading(false);
       });
-  }, [sortBy, order]);
+  }, [sortBy, order, debouncedSearch]);
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     switch (value) {
-      case 'newest':
-        setSortBy('createdAt'); setOrder('desc'); break;
-      case 'oldest':
-        setSortBy('createdAt'); setOrder('asc'); break;
-      case 'priceAsc':
-        setSortBy('price'); setOrder('asc'); break;
-      case 'priceDesc':
-        setSortBy('price'); setOrder('desc'); break;
-      case 'titleAsc':
-        setSortBy('title'); setOrder('asc'); break;
-      case 'titleDesc':
-        setSortBy('title'); setOrder('desc'); break;
-      default:
-        setSortBy('createdAt'); setOrder('desc');
+      case 'newest': setSortBy('createdAt'); setOrder('desc'); break;
+      case 'oldest': setSortBy('createdAt'); setOrder('asc'); break;
+      case 'priceAsc': setSortBy('price'); setOrder('asc'); break;
+      case 'priceDesc': setSortBy('price'); setOrder('desc'); break;
+      case 'titleAsc': setSortBy('title'); setOrder('asc'); break;
+      case 'titleDesc': setSortBy('title'); setOrder('desc'); break;
+      default: setSortBy('createdAt'); setOrder('desc');
     }
   };
 
-  if (loading && courses.length === 0) return (
+  if (loading && courses.length === 0 && !searchTerm) return (
     <div className="flex justify-center items-center h-64">
       <div className="text-xl text-indigo-600 font-semibold animate-pulse">Ładowanie kursów...</div>
     </div>
@@ -71,28 +75,46 @@ function HomePage() {
         </p>
       </div>
 
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <div className="text-gray-600 font-medium">
-          Dostępne kursy: <span className="text-indigo-600 font-bold">{courses.length}</span>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100 gap-4">
+        
+        <div className="text-gray-600 font-medium w-full md:w-auto text-center md:text-left">
+          Znaleziono: <span className="text-indigo-600 font-bold">{courses.length}</span>
         </div>
         
-        <div className="flex items-center gap-3">
-          <label htmlFor="sortSelect" className="text-sm font-medium text-gray-700">
-            Sortuj według:
-          </label>
-          <select 
-            id="sortSelect"
-            onChange={handleSortChange}
-            defaultValue="newest"
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 cursor-pointer shadow-sm outline-none"
-          >
-            <option value="newest">🗓️ Najnowsze</option>
-            <option value="oldest">🗓️ Najstarsze</option>
-            <option value="priceAsc">💰 Cena: od najniższej</option>
-            <option value="priceDesc">💰 Cena: od najwyższej</option>
-            <option value="titleAsc">🔤 Nazwa: A-Z</option>
-            <option value="titleDesc">🔤 Nazwa: Z-A</option>
-          </select>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              🔍
+            </div>
+            <input
+              type="text"
+              placeholder="Szukaj kursu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 p-2.5 shadow-sm outline-none transition"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <label htmlFor="sortSelect" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Sortuj:
+            </label>
+            <select 
+              id="sortSelect"
+              onChange={handleSortChange}
+              defaultValue="newest"
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 cursor-pointer shadow-sm outline-none"
+            >
+              <option value="newest">🗓️ Najnowsze</option>
+              <option value="oldest">🗓️ Najstarsze</option>
+              <option value="priceAsc">💰 Najtańsze</option>
+              <option value="priceDesc">💰 Najdroższe</option>
+              <option value="titleAsc">🔤 Od A do Z</option>
+              <option value="titleDesc">🔤 Od Z do A</option>
+            </select>
+          </div>
+
         </div>
       </div>
 
@@ -128,8 +150,10 @@ function HomePage() {
       </div>
       
       {!loading && courses.length === 0 && (
-        <div className="text-center text-gray-500 mt-10">
-          Nie znaleziono żadnych kursów. Zajrzyj później!
+        <div className="text-center text-gray-500 mt-16 bg-gray-50 p-8 rounded-xl border border-gray-200">
+          <span className="text-4xl block mb-4">🕵️‍♂️</span>
+          <p className="text-lg font-medium text-gray-900">Nie znaleziono kursów pasujących do Twojego wyszukiwania.</p>
+          <p className="text-gray-500 mt-1">Spróbuj wpisać inne słowo kluczowe lub zmień kryteria sortowania.</p>
         </div>
       )}
 
